@@ -31,6 +31,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Checkout ffmpeg
+        run: git submodule update --init --depth=1
       - name: Setup Emscripten toolchain
         uses: mymindstorm/setup-emsdk@v12
       - name: Build
