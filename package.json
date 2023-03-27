@@ -2,6 +2,7 @@
   "name": "ffmpeg-hevc-wasm",
   "version": "0.0.1",
   "type": "module",
+  "private": true,
   "scripts": {
     "build.ffmpeg": "./scripts/build.ffmpeg.sh",
     "build.wasm": "./scripts/build.decoder.sh",
