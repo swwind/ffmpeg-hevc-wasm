@@ -5,7 +5,7 @@
   "scripts": {
     "build.ffmpeg": "./scripts/build.ffmpeg.sh",
     "build.wasm": "./scripts/build.decoder.sh",
-    "build": "vite build"
+    "build": "vite build --base=/ffmpeg-hevc-wasm"
   },
   "devDependencies": {
     "vite": "^4.2.1"
