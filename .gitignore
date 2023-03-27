@@ -1,0 +1,6 @@
+/ffmpeg-lib
+/dist
+/build
+/node_modules
+*.log
+*.tmp

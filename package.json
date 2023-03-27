@@ -1,0 +1,13 @@
+{
+  "name": "ffmpeg-hevc-wasm",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "build.ffmpeg": "./scripts/build.ffmpeg.sh",
+    "build.wasm": "./scripts/build.decoder.sh",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "vite": "^4.2.1"
+  }
+}

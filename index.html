@@ -1,0 +1,54 @@
+<div>
+  <button id="onimai">Play Onimai PV (1920x1080, yuv420p, 24fps)</button>
+  <button id="av170001">Play Av170001 (512x288, yuv420p, 15fps)</button>
+</div>
+
+<p id="fps"></p>
+
+<canvas id="canvas"></canvas>
+
+<script type="module">
+  var initialized = false;
+
+  const worker = new Worker(new URL("./worker.js", import.meta.url), {
+    type: "module",
+  });
+
+  const fps = document.getElementById("fps");
+
+  worker.addEventListener("message", (message) => {
+    console.log("main:", message.data);
+
+    if (message.data.type === "initialize") {
+      initialized = true;
+    }
+
+    if (message.data.type === "fps") {
+      fps.textContent = message.data.message;
+    }
+  });
+
+  const canvas = document.getElementById("canvas");
+  const offscreen = canvas.transferControlToOffscreen();
+
+  function playVideo(url, width, height, fps) {
+    if (!initialized) {
+      alert("HEVC Decoder not initialized");
+      return;
+    }
+
+    worker.postMessage(
+      { type: "decode", canvas: offscreen, url, width, height, fps },
+      [offscreen]
+    );
+    document.querySelectorAll("button").forEach((button) => button.remove());
+  }
+
+  document.getElementById("onimai").addEventListener("click", () => {
+    playVideo("/onimai.hevc", 1920, 1080, 24);
+  });
+
+  document.getElementById("av170001").addEventListener("click", () => {
+    playVideo("/av170001.hevc", 512, 288, 24);
+  });
+</script>

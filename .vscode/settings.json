@@ -1,0 +1,6 @@
+{
+  "C_Cpp.default.includePath": [
+    "./ffmpeg-lib/include",
+    "/usr/lib/emscripten/system/include"
+  ]
+}
