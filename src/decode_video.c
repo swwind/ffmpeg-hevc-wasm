@@ -160,7 +160,6 @@ AVCodecParserContext *_parser_init(AVCodec *codec)
 EMSCRIPTEN_KEEPALIVE
 AVCodecContext *_alloc_context3(AVCodec *codec)
 {
-
     AVCodecContext *c = avcodec_alloc_context3(codec);
     if (!c)
     {
