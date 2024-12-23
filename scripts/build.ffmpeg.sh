@@ -36,6 +36,8 @@ FFMPEG_FLAGS=(
   --disable-network
   --enable-parser=hevc
   --enable-decoder=hevc
+  CFLAGS="-msimd128"
+  CXXFLAGS="-msimd128"
 )
 
 [ -d "$LIB_TARGET" ] && rm -rf "$LIB_TARGET"
