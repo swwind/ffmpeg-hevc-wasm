@@ -54,11 +54,11 @@
     }
 
     document.getElementById("onimai").addEventListener("click", () => {
-      playVideo("onimai.hevc", 1920, 1080, 24);
+      playVideo(new URL("./video/onimai.hevc", import.meta.url).href, 1920, 1080, 24);
     });
 
     document.getElementById("av170001").addEventListener("click", () => {
-      playVideo("av170001.hevc", 512, 288, 15);
+      playVideo(new URL("./video/av170001.hevc", import.meta.url).href, 512, 288, 15);
     });
   </script>
 </body>
