@@ -32,7 +32,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Checkout ffmpeg
-        run: git submodule update --init --recursive --depth=1
+        run: git submodule update --init --recursive
       - name: Setup Emscripten toolchain
         uses: mymindstorm/setup-emsdk@v12
       - name: Build
