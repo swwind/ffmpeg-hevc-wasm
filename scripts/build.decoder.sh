@@ -21,6 +21,7 @@ emcc src/decode_video.c \
   -msimd128 \
   -o build/decode_video.js
 
-# wasm-opt -O2 --enable-bulk-memory --enable-threads --enable-simd -o build/decode_video.wasm build/decode_video.wasm
+wasm-opt -O2 --enable-bulk-memory --enable-threads --enable-simd -o build/decode_video_o2.wasm build/decode_video.wasm
+mv build/decode_video_o2.wasm build/decode_video.wasm
 
 # sed -i 's/= import.meta.url/= undefined/g' build/decode_video.js

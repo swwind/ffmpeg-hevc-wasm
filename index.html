@@ -16,7 +16,7 @@
 
   <p id="fps"></p>
 
-  <video id="video"></video>
+  <canvas id="canvas"></canvas>
 
   <script type="module">
     var initialized = false;
@@ -26,9 +26,8 @@
     });
 
     const fps = document.getElementById("fps");
-
-    const generator = new MediaStreamTrackGenerator({ kind: 'video' });
-    const writer = generator.writable.getWriter();
+    const canvas = document.getElementById('canvas');
+    const offscreen = canvas.transferControlToOffscreen();
 
     worker.addEventListener("message", (message) => {
       // console.log("main:", message.data);
@@ -39,15 +38,7 @@
 
       if (message.data.type === "fps") {
         fps.textContent = message.data.message;
-        fps.style.color = message.data.color;
-      }
-
-      if (message.data.type === "frame") {
-        const frame = message.data.frame;
-        console.log('receive frame', frame.timestamp);
-        writer.write(frame).then(() => {
-          frame.close();
-        });
+        fps.style.color = message.data.color || "black";
       }
     });
 
@@ -58,14 +49,7 @@
         return;
       }
 
-
-      const video = document.getElementById("video");
-      const stream = new MediaStream();
-      stream.addTrack(generator);
-      video.srcObject = stream;
-      video.play();
-
-      worker.postMessage({ type: "decode", url, width, height, fps });
+      worker.postMessage({ type: "decode", url, width, height, fps, offscreen }, [offscreen]);
       document.querySelectorAll("button").forEach((button) => button.remove());
     }
 
