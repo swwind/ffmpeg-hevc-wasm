@@ -2,5 +2,9 @@
   "C_Cpp.default.includePath": [
     "./ffmpeg-lib/include",
     "/usr/lib/emscripten/system/include"
+  ],
+  "clangd.fallbackFlags": [
+    "-I${workspaceFolder}/ffmpeg-lib/include",
+    "-I/usr/lib/emscripten/system/include"
   ]
 }

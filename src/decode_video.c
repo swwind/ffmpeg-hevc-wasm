@@ -20,187 +20,114 @@
  * THE SOFTWARE.
  */
 
-/**
- * @file libavcodec video decoding API usage example
- * @example decode_video.c *
- *
- * Read from an HEVC video file, decode frames.
- */
-
+#include <emscripten.h>
+#include <libavcodec/avcodec.h>
+#include <libavutil/frame.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <libavcodec/avcodec.h>
-
-#include <errno.h>
-#include <emscripten.h>
+static AVCodecContext *codec_ctx = NULL;
+static AVCodecParserContext *parser_ctx = NULL;
+static AVFrame *frame = NULL;
+static AVPacket *packet = NULL;
+static uint8_t *input_data = NULL;
+static size_t input_size = 0;
+static size_t input_offset = 0;
 
 EMSCRIPTEN_KEEPALIVE
-unsigned char *_frame_data_y(AVFrame *frame)
-{
-    return frame->data[0];
+void init(char *buf, size_t len) {
+  input_data = (uint8_t *)buf;
+  input_size = len;
+  input_offset = 0;
+
+  const AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
+  if (!codec) {
+    fprintf(stderr, "Codec HEVC not found\n");
+    exit(1);
+  }
+
+  parser_ctx = av_parser_init(codec->id);
+  if (!parser_ctx) {
+    fprintf(stderr, "Parser not found\n");
+    exit(1);
+  }
+
+  codec_ctx = avcodec_alloc_context3(codec);
+  if (!codec_ctx) {
+    fprintf(stderr, "Could not allocate codec context\n");
+    exit(1);
+  }
+
+  if (avcodec_open2(codec_ctx, codec, NULL) < 0) {
+    fprintf(stderr, "Could not open codec\n");
+    exit(1);
+  }
+
+  frame = av_frame_alloc();
+  if (!frame) {
+    fprintf(stderr, "Could not allocate frame\n");
+    exit(1);
+  }
+
+  packet = av_packet_alloc();
+  if (!packet) {
+    fprintf(stderr, "Could not allocate packet\n");
+    exit(1);
+  }
 }
 
 EMSCRIPTEN_KEEPALIVE
-unsigned char *_frame_data_u(AVFrame *frame)
-{
-    return frame->data[1];
-}
+bool next_frame(char *output_frame) {
 
-EMSCRIPTEN_KEEPALIVE
-unsigned char *_frame_data_v(AVFrame *frame)
-{
-    return frame->data[2];
-}
-
-EMSCRIPTEN_KEEPALIVE
-void _frame_unref(AVFrame *frame)
-{
+  if (avcodec_receive_frame(codec_ctx, frame) == 0) {
+    // Assuming YUV420 format; copy frame data
+    size_t y_size = codec_ctx->width * codec_ctx->height;
+    size_t uv_size = y_size / 4;
+    memcpy(output_frame, frame->data[0], y_size);                     // Y
+    memcpy(output_frame + y_size, frame->data[1], uv_size);           // U
+    memcpy(output_frame + y_size + uv_size, frame->data[2], uv_size); // V
     av_frame_unref(frame);
-}
+    return true; // Frame successfully decoded
+  }
 
-EMSCRIPTEN_KEEPALIVE
-int _receive_frame(AVCodecContext *c, AVFrame *frame)
-{
-    int ret;
-    ret = avcodec_receive_frame(c, frame);
-    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-    {
-        return 0;
-    }
-    else if (ret < 0)
-    {
-        fprintf(stderr, "Error during decoding\n");
-        return -1;
-    }
+  // fprintf(stderr, "Looks like no frame is here\n");
 
-    // decode_frame(frame);
-    return 1;
-}
+  if (input_offset >= input_size) {
+    fprintf(stderr, "EOF\n");
+    return false; // End of input
+  }
 
-EMSCRIPTEN_KEEPALIVE
-int _send_packet(AVCodecContext *c, AVPacket *pkt)
-{
-    int ret;
+  int ret =
+      av_parser_parse2(parser_ctx, codec_ctx, &packet->data, &packet->size,
+                       input_data + input_offset, input_size - input_offset,
+                       AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
+  if (ret < 0) {
+    fprintf(stderr, "Error while parsing\n");
+    return false;
+  }
 
-    ret = avcodec_send_packet(c, pkt);
-    // printf("avcodec_send_packet: %d\n", ret);
-    if (ret < 0)
-    {
-        fprintf(stderr, "Error sending a packet for decoding\n");
-        return -1;
+  // fprintf(stderr, "Walks suceed %d\n", ret);
+  input_offset += ret;
+
+  if (packet->size > 0) {
+    // fprintf(stderr, "Yes there is a packet!\n");
+
+    if (avcodec_send_packet(codec_ctx, packet) < 0) {
+      fprintf(stderr, "Error sending packet\n");
+      return false;
     }
 
-    return 0;
+    return next_frame(output_frame);
+  }
+
+  // fprintf(stderr, "Sayonara, onei-sama: %d\n", packet->size);
+  // return false; // No frame available
+  return next_frame(output_frame);
 }
 
-EMSCRIPTEN_KEEPALIVE
-/* use the parser to split the data into frames */
-int _parser_parse(AVCodecParserContext *parser, AVCodecContext *c, AVPacket *pkt, uint8_t *data, size_t data_size)
-{
-    int ret;
-
-    ret = av_parser_parse2(parser, c, &pkt->data, &pkt->size,
-                           data, data_size, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
-    if (ret < 0)
-    {
-        fprintf(stderr, "Error while parsing: %s\n", strerror(errno));
-        return -1;
-    }
-
-    return ret;
-}
-
-EMSCRIPTEN_KEEPALIVE
-int _packet_size(AVPacket *pkt)
-{
-    return pkt->size;
-}
-
-EMSCRIPTEN_KEEPALIVE
-AVPacket *_packet_alloc()
-{
-    AVPacket *pkt = av_packet_alloc();
-    if (!pkt)
-    {
-        fprintf(stderr, "Failed to alloc packet\n");
-        return NULL;
-    }
-    return pkt;
-}
-
-EMSCRIPTEN_KEEPALIVE
-const AVCodec *_find_decoder_hevc()
-{
-
-    /* find the HEVC video decoder */
-    const AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
-    if (!codec)
-    {
-        fprintf(stderr, "Codec HEVC not found\n");
-        return NULL;
-    }
-
-    return codec;
-}
-
-EMSCRIPTEN_KEEPALIVE
-AVCodecParserContext *_parser_init(AVCodec *codec)
-{
-    AVCodecParserContext *parser = av_parser_init(codec->id);
-    if (!parser)
-    {
-        fprintf(stderr, "parser not found\n");
-        return NULL;
-    }
-    return parser;
-}
-
-EMSCRIPTEN_KEEPALIVE
-AVCodecContext *_alloc_context3(AVCodec *codec)
-{
-    AVCodecContext *c = avcodec_alloc_context3(codec);
-    if (!c)
-    {
-        fprintf(stderr, "Could not allocate video codec context\n");
-        return NULL;
-    }
-    return c;
-}
-
-EMSCRIPTEN_KEEPALIVE
-int _avcodec_open2(AVCodecContext *c, AVCodec *codec)
-{
-    /* open it */
-    if (avcodec_open2(c, codec, NULL) < 0)
-    {
-        fprintf(stderr, "Could not open codec\n");
-        return -1;
-    }
-    return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE
-AVFrame *_frame_alloc()
-{
-    AVFrame *frame = av_frame_alloc();
-    if (!frame)
-    {
-        fprintf(stderr, "Could not allocate video frame\n");
-        return NULL;
-    }
-    return frame;
-}
-
-EMSCRIPTEN_KEEPALIVE
-void *_malloc(size_t size)
-{
-    return malloc(size);
-}
-
-EMSCRIPTEN_KEEPALIVE
-void _free(void *ptr)
-{
-    return free(ptr);
+void cleanup() {
+  avcodec_free_context(&codec_ctx);
+  av_parser_close(parser_ctx);
+  av_packet_free(&packet);
 }

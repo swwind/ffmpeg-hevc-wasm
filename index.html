@@ -1,55 +1,82 @@
-<div>
-  <button id="onimai">Play Onimai PV (1920x1080, yuv420p, 24fps)</button>
-  <button id="av170001">Play Av170001 (512x288, yuv420p, 15fps)</button>
-</div>
+<!DOCTYPE html>
+<html lang="en">
 
-<p id="fps"></p>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mozilla Firefox</title>
+</head>
 
-<canvas id="canvas"></canvas>
+<body>
 
-<script type="module">
-  var initialized = false;
+  <div>
+    <button id="onimai">Play Onimai PV (1920x1080, yuv420p, 24fps)</button>
+    <button id="av170001">Play Av170001 (512x288, yuv420p, 15fps)</button>
+  </div>
 
-  const worker = new Worker(new URL("./worker.js", import.meta.url), {
-    type: "module",
-  });
+  <p id="fps"></p>
 
-  const fps = document.getElementById("fps");
+  <video id="video"></video>
 
-  worker.addEventListener("message", (message) => {
-    // console.log("main:", message.data);
+  <script type="module">
+    var initialized = false;
 
-    if (message.data.type === "initialize") {
-      initialized = true;
+    const worker = new Worker(new URL("./worker.js", import.meta.url), {
+      type: "module",
+    });
+
+    const fps = document.getElementById("fps");
+
+    const generator = new MediaStreamTrackGenerator({ kind: 'video' });
+    const writer = generator.writable.getWriter();
+
+    worker.addEventListener("message", (message) => {
+      // console.log("main:", message.data);
+
+      if (message.data.type === "initialize") {
+        initialized = true;
+      }
+
+      if (message.data.type === "fps") {
+        fps.textContent = message.data.message;
+        fps.style.color = message.data.color;
+      }
+
+      if (message.data.type === "frame") {
+        const frame = message.data.frame;
+        console.log('receive frame', frame.timestamp);
+        writer.write(frame).then(() => {
+          frame.close();
+        });
+      }
+    });
+
+
+    function playVideo(url, width, height, fps) {
+      if (!initialized) {
+        alert("HEVC Decoder not initialized");
+        return;
+      }
+
+
+      const video = document.getElementById("video");
+      const stream = new MediaStream();
+      stream.addTrack(generator);
+      video.srcObject = stream;
+      video.play();
+
+      worker.postMessage({ type: "decode", url, width, height, fps });
+      document.querySelectorAll("button").forEach((button) => button.remove());
     }
 
-    if (message.data.type === "fps") {
-      fps.textContent = message.data.message;
-      fps.style.color = message.data.color;
-    }
-  });
+    document.getElementById("onimai").addEventListener("click", () => {
+      playVideo("onimai.hevc", 1920, 1080, 24);
+    });
 
-  const canvas = document.getElementById("canvas");
-  const offscreen = canvas.transferControlToOffscreen();
+    document.getElementById("av170001").addEventListener("click", () => {
+      playVideo("av170001.hevc", 512, 288, 15);
+    });
+  </script>
+</body>
 
-  function playVideo(url, width, height, fps) {
-    if (!initialized) {
-      alert("HEVC Decoder not initialized");
-      return;
-    }
-
-    worker.postMessage(
-      { type: "decode", canvas: offscreen, url, width, height, fps },
-      [offscreen]
-    );
-    document.querySelectorAll("button").forEach((button) => button.remove());
-  }
-
-  document.getElementById("onimai").addEventListener("click", () => {
-    playVideo("/ffmpeg-hevc-wasm/onimai.hevc", 1920, 1080, 24);
-  });
-
-  document.getElementById("av170001").addEventListener("click", () => {
-    playVideo("/ffmpeg-hevc-wasm/av170001.hevc", 512, 288, 15);
-  });
-</script>
+</html>
