@@ -60,6 +60,7 @@ decoder().then((Module) => {
         });
 
         ctx.drawImage(videoFrame, 0, 0);
+        videoFrame.close();
 
         // postMessage({ type: 'frame', frame: videoFrame }, [videoFrame]);
       }
